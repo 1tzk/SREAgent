@@ -1,17 +1,18 @@
 # AI SRE Agent
 
-AI SRE Agent is a microservice fault diagnosis and incident analysis platform. This repository uses a separated backend and frontend structure.
+AI SRE Agent 是一个面向微服务故障诊断与事故分析的平台。本项目采用前后端分离结构：后端使用 FastAPI，前端使用 React + TypeScript + Vite。
 
-Current scope:
+当前阶段只完成项目骨架和基础启动能力：
 
-- FastAPI backend scaffold
-- SQLite database connection configuration
-- React + TypeScript + Vite frontend scaffold
-- Mock-first LLM configuration placeholder
+- FastAPI 后端骨架
+- `GET /api/health` 健康检查接口
+- SQLite 数据库连接配置
+- React + TypeScript + Vite 前端骨架
+- LLM 默认 mock 模式配置占位
 
-No database tables, Agent workflow, RAG logic, or complex UI are implemented in this phase.
+本阶段不实现数据库表、Agent 工作流、RAG 逻辑或复杂 UI。
 
-## Project Structure
+## 项目结构
 
 ```text
 ai-sre-agent/
@@ -27,61 +28,61 @@ ai-sre-agent/
 └── README.md
 ```
 
-## Backend Setup
+## 后端启动
 
-Use the existing Anaconda environment:
+使用已有的 Anaconda 虚拟环境：
 
 ```bash
 conda activate sre
 ```
 
-Install dependencies:
+安装依赖：
 
 ```bash
 cd backend
 pip install -r requirements.txt
 ```
 
-Start the API server:
+启动 API 服务：
 
 ```bash
 uvicorn app.main:app --reload
 ```
 
-Health check:
+健康检查：
 
 ```bash
 curl http://localhost:8000/api/health
 ```
 
-Expected response:
+预期返回：
 
 ```json
 {"status":"ok"}
 ```
 
-## Frontend Setup
+## 前端启动
 
-Install dependencies:
+安装依赖：
 
 ```bash
 cd frontend
 npm install
 ```
 
-Start the development server:
+启动开发服务：
 
 ```bash
 npm run dev
 ```
 
-Open the URL printed by Vite, usually:
+打开 Vite 输出的本地地址，通常是：
 
 ```text
 http://localhost:5173
 ```
 
-The home page displays:
+首页会显示：
 
 ```text
 AI SRE Agent
