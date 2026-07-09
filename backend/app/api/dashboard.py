@@ -3,9 +3,17 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import Alert, AlertSeverity, AlertStatus, Incident, Log, Metric, Runbook, Service
+from app.models import (
+    Alert,
+    AlertSeverity,
+    AlertStatus,
+    Incident,
+    Log,
+    Metric,
+    Runbook,
+    Service,
+)
 from app.schemas import DashboardSummary
-
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
@@ -14,15 +22,28 @@ router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 def get_dashboard_summary(db: Session = Depends(get_db)) -> DashboardSummary:
     services_total = db.scalar(select(func.count()).select_from(Service)) or 0
     active_alerts = (
-        db.scalar(select(func.count()).select_from(Alert).where(Alert.status == AlertStatus.ACTIVE))
+        db.scalar(
+            select(func.count())
+            .select_from(Alert)
+            .where(Alert.status == AlertStatus.ACTIVE)
+        )
         or 0
     )
+    # TODO 当前活跃的严重告警？
     critical_alerts = (
-        db.scalar(select(func.count()).select_from(Alert).where(Alert.severity == AlertSeverity.CRITICAL))
+        db.scalar(
+            select(func.count())
+            .select_from(Alert)
+            .where(Alert.severity == AlertSeverity.CRITICAL)
+        )
         or 0
     )
     open_incidents = (
-        db.scalar(select(func.count()).select_from(Incident).where(Incident.status != "resolved"))
+        db.scalar(
+            select(func.count())
+            .select_from(Incident)
+            .where(Incident.status != "resolved")
+        )
         or 0
     )
     runbooks_total = db.scalar(select(func.count()).select_from(Runbook)) or 0

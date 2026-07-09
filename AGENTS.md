@@ -1,5 +1,9 @@
 # Project Constraints
 
+## Code
+
+- Add concise Chinese comments where necessary to explain important or non-obvious logic.
+
 ## Backend
 
 - Python 3.11+
