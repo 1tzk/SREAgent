@@ -6,6 +6,7 @@ from app.config import settings
 
 connect_args = {}
 if settings.database_url.startswith("sqlite"):
+    # FastAPI 请求可能跨线程使用连接，SQLite 本地演示环境需关闭同线程限制。
     connect_args["check_same_thread"] = False
 
 engine = create_engine(settings.database_url, connect_args=connect_args)

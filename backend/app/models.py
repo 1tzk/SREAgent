@@ -43,6 +43,7 @@ class ApprovalStatus(StrEnum):
 
 
 def enum_column(enum_cls: type[StrEnum], length: int = 32):
+    # 使用字符串保存枚举值，便于后续从 SQLite 迁移到 PostgreSQL。
     return Enum(
         enum_cls,
         values_callable=lambda enum: [item.value for item in enum],

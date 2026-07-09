@@ -29,7 +29,7 @@ def get_dashboard_summary(db: Session = Depends(get_db)) -> DashboardSummary:
         )
         or 0
     )
-    # TODO 当前活跃的严重告警？
+    # 严重告警统计包含历史记录，活跃告警数量由 active_alerts 单独体现。
     critical_alerts = (
         db.scalar(
             select(func.count())

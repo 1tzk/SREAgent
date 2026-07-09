@@ -86,6 +86,7 @@ NORMAL_METRICS = [
 
 
 def reset_database(db: Session) -> dict[str, int]:
+    # 该接口用于本地演示，每次执行都会重建表并清除已有场景数据。
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
 
