@@ -167,6 +167,14 @@ def run_mock_diagnosis(db: Session, query: str) -> dict[str, Any]:
             "traces": traces,
             "deployments": deployments,
             "runbooks": runbooks,
+            "typed_evidence": [
+                {"type": "alert", "records": alerts},
+                {"type": "metric", "records": metrics},
+                {"type": "log", "records": logs},
+                {"type": "trace", "records": traces},
+                {"type": "deployment", "records": deployments},
+                {"type": "runbook", "records": runbooks},
+            ],
         }
         report = generate_incident_report(evidence)
 

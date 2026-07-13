@@ -11,7 +11,7 @@ from functools import wraps
 from time import perf_counter
 from typing import Any, TypeVar, cast
 
-from sqlalchemy import or_, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import (
@@ -205,26 +205,46 @@ def get_recent_deployments(
     return [_to_dict(item) for item in context.db.scalars(statement).all()]
 
 
+def rank_runbooks(db: Session, query: str) -> list[dict[str, Any]]:
+    """按标题、分类、标签和正文的命中位置计算稳定的关键词评分。"""
+    tokens = re.findall(r"[A-Za-z0-9_-]+|[\u4e00-\u9fff]+", query)
+    if not tokens:
+        return []
+
+    ranked: list[dict[str, Any]] = []
+    for runbook in db.scalars(select(Runbook).order_by(Runbook.updated_at.desc())).all():
+        fields = (
+            (runbook.title.lower(), 5),
+            (runbook.category.lower(), 3),
+            (runbook.tags.lower(), 2),
+            (runbook.content.lower(), 1),
+        )
+        score = 0
+        matched_keywords: list[str] = []
+        for token in tokens:
+            normalized_token = token.lower()
+            token_score = sum(
+                weight for field_value, weight in fields if normalized_token in field_value
+            )
+            if token_score:
+                score += token_score
+                matched_keywords.append(token)
+        if score:
+            ranked.append(
+                {
+                    "title": runbook.title,
+                    "score": score,
+                    "content": runbook.content,
+                    "matched_keywords": matched_keywords,
+                }
+            )
+    return sorted(ranked, key=lambda item: (-item["score"], item["title"]))[:10]
+
+
 @audited_tool
 def search_runbook(query: str) -> list[dict[str, Any]]:
     context = _current_context()
-    tokens = re.findall(r"[A-Za-z0-9_-]+|[\u4e00-\u9fff]+", query)
-    statement = select(Runbook)
-    if tokens:
-        conditions = []
-        for token in tokens:
-            pattern = f"%{token}%"
-            conditions.extend(
-                [
-                    Runbook.title.ilike(pattern),
-                    Runbook.category.ilike(pattern),
-                    Runbook.content.ilike(pattern),
-                    Runbook.tags.ilike(pattern),
-                ]
-            )
-        statement = statement.where(or_(*conditions))
-    statement = statement.order_by(Runbook.updated_at.desc(), Runbook.id).limit(10)
-    return [_to_dict(item) for item in context.db.scalars(statement).all()]
+    return rank_runbooks(context.db, query)
 
 
 def _has_high_metric(
@@ -259,6 +279,9 @@ def generate_incident_report(context: dict) -> dict[str, Any]:
     logs = context.get("logs", [])
     traces = context.get("traces", [])
     deployments = context.get("deployments", [])
+    runbooks = context.get("runbooks", [])
+    runbook_titles = "、".join(item["title"] for item in runbooks[:3])
+    runbook_reference = f"\nRunbook 参考：{runbook_titles}" if runbook_titles else ""
 
     slow_order = _has_high_metric(metrics, "order-service", "p95_latency", 500)
     slow_inventory = _has_high_metric(
@@ -302,7 +325,7 @@ def generate_incident_report(context: dict) -> dict[str, Any]:
                 f"inventory-service 是链路最慢 span（{slowest_span['duration_ms']}ms）；"
                 "日志出现 slow SQL、missing index 或 query timeout；"
                 "且该服务近期存在发布记录。\n"
-                f"处理建议：{recommendation}"
+                f"处理建议：{recommendation}{runbook_reference}"
             ),
             "root_cause": root_cause,
             "recommendation": recommendation,
@@ -358,7 +381,7 @@ def generate_incident_report(context: dict) -> dict[str, Any]:
             f"诊断结论：{root_cause}\n"
             f"已检查 {len(metrics)} 个指标点、{len(logs)} 条日志和 "
             f"{len(traces)} 个链路 span。\n"
-            f"处理建议：{recommendation}"
+            f"处理建议：{recommendation}{runbook_reference}"
         ),
         "root_cause": root_cause,
         "recommendation": recommendation,

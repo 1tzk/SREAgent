@@ -122,6 +122,33 @@ class IncidentRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class IncidentTimelineItem(BaseModel):
+    occurred_at: datetime
+    event_type: str
+    title: str
+    description: str
+
+
+class EvidenceSource(BaseModel):
+    evidence_type: str
+    title: str
+    description: str
+    service_name: str | None
+
+
+class IncidentReportResponse(BaseModel):
+    incident_id: int
+    title: str
+    severity: str
+    affected_services: list[str]
+    timeline: list[IncidentTimelineItem]
+    root_cause: str
+    evidence_sources: list[EvidenceSource]
+    recommendation: str
+    prevention: str
+    requires_approval: bool
+
+
 class TraceDetailResponse(BaseModel):
     trace_id: str
     spans: list[TraceRead]

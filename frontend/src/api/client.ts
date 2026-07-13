@@ -7,7 +7,9 @@ import type {
   DashboardSummary,
   DiagnoseResponse,
   Incident,
+  IncidentReport,
   Metric,
+  Approval,
   ScenarioResponse,
   Service,
   TraceDetail,
@@ -36,6 +38,13 @@ export const apiClient = {
   getTrace: (traceId: string) => api.get<TraceDetail>(`/traces/${traceId}`),
   getIncidents: () => api.get<Incident[]>("/incidents"),
   getIncident: (incidentId: number) => api.get<Incident>(`/incidents/${incidentId}`),
+  getIncidentReport: (incidentId: number) =>
+    api.post<IncidentReport>(`/incidents/${incidentId}/report`),
+  getApprovals: () => api.get<Approval[]>("/approvals"),
+  approveApproval: (approvalId: number) =>
+    api.post<Approval>(`/approvals/${approvalId}/approve`),
+  rejectApproval: (approvalId: number) =>
+    api.post<Approval>(`/approvals/${approvalId}/reject`),
 };
 
 export function getApiErrorMessage(error: unknown): string {

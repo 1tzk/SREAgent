@@ -42,7 +42,7 @@ function evidenceCount(evidence: Record<string, unknown>, key: string) {
   return Array.isArray(value) ? value.length : 0;
 }
 
-export function AgentDiagnosisPage() {
+function LegacyAgentDiagnosisPage() {
   const [query, setQuery] = useState(quickQuestions[0]);
   const [result, setResult] = useState<DiagnoseResponse>();
   const [loading, setLoading] = useState(false);
@@ -126,3 +126,5 @@ export function AgentDiagnosisPage() {
     </section>
   );
 }
+
+export { EnhancedAgentDiagnosisPage as AgentDiagnosisPage } from "./AgentDiagnosisEnhanced";

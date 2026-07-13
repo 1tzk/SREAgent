@@ -77,6 +77,33 @@ export interface Incident {
   updated_at: string;
 }
 
+export interface IncidentTimelineItem {
+  occurred_at: string;
+  event_type: string;
+  title: string;
+  description: string;
+}
+
+export interface EvidenceSource {
+  evidence_type: "alert" | "metric" | "log" | "trace" | "deployment" | "runbook";
+  title: string;
+  description: string;
+  service_name: string | null;
+}
+
+export interface IncidentReport {
+  incident_id: number;
+  title: string;
+  severity: Severity;
+  affected_services: string[];
+  timeline: IncidentTimelineItem[];
+  root_cause: string;
+  evidence_sources: EvidenceSource[];
+  recommendation: string;
+  prevention: string;
+  requires_approval: boolean;
+}
+
 export interface AgentToolCall {
   id: number;
   session_id: number;
