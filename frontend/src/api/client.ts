@@ -16,6 +16,12 @@ import type {
   TraceSpan,
 } from "../types";
 
+interface ApiErrorPayload {
+  code?: string;
+  message?: string;
+  detail?: unknown;
+}
+
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api",
   timeout: 15_000,
@@ -49,7 +55,13 @@ export const apiClient = {
 
 export function getApiErrorMessage(error: unknown): string {
   if (axios.isAxiosError(error)) {
-    return error.response?.data?.detail ?? error.message;
+    // 后端统一返回 message；兼容仍使用 FastAPI detail 的旧接口。
+    const payload = error.response?.data as ApiErrorPayload | undefined;
+    if (typeof payload?.message === "string") return payload.message;
+    if (typeof payload?.detail === "string") return payload.detail;
+    if (error.code === "ECONNABORTED") return "请求超时，请稍后重试。";
+    if (!error.response) return "无法连接后端服务，请确认服务已启动。";
+    return `请求失败（HTTP ${error.response.status}）。`;
   }
   return "请求失败，请检查后端服务是否已启动。";
 }
