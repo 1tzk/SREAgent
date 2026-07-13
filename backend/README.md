@@ -80,3 +80,24 @@ curl -X POST http://localhost:8000/api/scenarios/order-timeout
 - `GET /api/incidents/{incident_id}`
 
 接口文档启动后可访问 `http://localhost:8000/docs`。
+
+## Mock Agent 诊断
+
+当前版本固定使用确定性 Mock 工作流，不需要任何大模型 API Key。
+
+```bash
+curl -X POST http://localhost:8000/api/agent/diagnose \
+  -H "Content-Type: application/json" \
+  -d '{"query":"订单接口最近响应很慢，请帮我排查原因并给出处理建议。"}'
+```
+
+诊断会依次查询告警、指标、日志、链路、发布记录和 Runbook。每次工具调用都会记录输入、输出、耗时和执行状态。涉及回滚、重启、扩容或配置变更时只创建待审批单，不会执行实际操作。
+
+相关接口：
+
+- `GET /api/agent/sessions`
+- `GET /api/agent/sessions/{session_id}`
+- `GET /api/agent/sessions/{session_id}/tool-calls`
+- `GET /api/approvals`
+- `POST /api/approvals/{approval_id}/approve`
+- `POST /api/approvals/{approval_id}/reject`

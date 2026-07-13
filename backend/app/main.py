@@ -1,5 +1,7 @@
 from fastapi import FastAPI
 
+from app.api.agent import router as agent_router
+from app.api.approvals import router as approvals_router
 from app.api.dashboard import router as dashboard_router
 from app.api.deployments import router as deployments_router
 from app.api.health import router as health_router
@@ -15,6 +17,8 @@ from app.config import settings
 
 def create_app() -> FastAPI:
     app = FastAPI(title=settings.app_name)
+    app.include_router(agent_router, prefix="/api")
+    app.include_router(approvals_router, prefix="/api")
     app.include_router(dashboard_router, prefix="/api")
     app.include_router(deployments_router, prefix="/api")
     app.include_router(health_router, prefix="/api")

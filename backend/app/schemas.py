@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
@@ -133,3 +134,60 @@ class ScenarioResponse(BaseModel):
     incident: IncidentRead
     deployment: DeploymentRead | None = None
     records_created: dict[str, int]
+
+
+class DiagnoseRequest(BaseModel):
+    query: str
+
+
+class AgentToolCallRead(BaseModel):
+    id: int
+    session_id: int
+    tool_name: str
+    tool_input: dict[str, Any]
+    tool_output: Any
+    latency_ms: int
+    success: bool
+    created_at: datetime
+
+
+class ApprovalRead(BaseModel):
+    id: int
+    session_id: int
+    action_type: str
+    action_description: str
+    risk_level: str
+    status: str
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class AgentSessionRead(BaseModel):
+    id: int
+    user_query: str
+    final_answer: str | None
+    diagnosis_summary: str | None
+    root_cause: str | None
+    recommendation: str | None
+    risk_level: str | None
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class AgentSessionDetail(AgentSessionRead):
+    tool_calls: list[AgentToolCallRead]
+    approvals: list[ApprovalRead]
+
+
+class DiagnoseResponse(BaseModel):
+    session_id: int
+    final_answer: str
+    root_cause: str
+    recommendation: str
+    risk_level: str
+    evidence: dict[str, Any]
+    tool_calls: list[AgentToolCallRead]
+    approval: ApprovalRead | None
