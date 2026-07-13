@@ -6,6 +6,11 @@ class Settings(BaseSettings):
     app_env: str = "development"
     database_url: str = "sqlite:///./ai_sre_agent.db"
     llm_provider: str = "mock"
+    openai_api_key: str = ""
+    deepseek_api_key: str = ""
+    qwen_api_key: str = ""
+    model_name: str = ""
+    llm_timeout_seconds: int = 60
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
 
     model_config = SettingsConfigDict(

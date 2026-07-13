@@ -5,6 +5,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.agent.llm import call_llm_for_diagnosis
 from app.agent.tools import (
     bind_tool_context,
     generate_incident_report,
@@ -177,6 +178,17 @@ def run_mock_diagnosis(db: Session, query: str) -> dict[str, Any]:
             ],
         }
         report = generate_incident_report(evidence)
+        llm_response = call_llm_for_diagnosis(
+            {
+                "query": query,
+                "evidence": evidence,
+                "mock_report": report,
+            }
+        )
+        # LLM 只润色面向用户的文本，根因、风险和审批仍由稳定规则控制。
+        report["final_answer"] = llm_response["final_answer"]
+        report["diagnosis_summary"] = llm_response["summary"]
+        report["recommendation"] = llm_response["recommendation"]
 
         if report["approval_action"]:
             approval_result = submit_approval(
