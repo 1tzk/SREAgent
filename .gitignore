@@ -91,3 +91,9 @@ tmp/
 temp/
 *.tmp
 *.bak
+
+# 忽略所有 .md 后缀的文件
+*.md
+
+# 排除 README.md，不忽略该文件
+!README.md
