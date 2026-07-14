@@ -1,4 +1,5 @@
 import json
+import logging
 from collections import defaultdict
 from typing import Any
 
@@ -18,6 +19,9 @@ from app.agent.tools import (
     submit_approval,
 )
 from app.models import AgentSession, AgentToolCall, Approval
+
+
+logger = logging.getLogger(__name__)
 
 
 SERVICE_KEYWORDS = {
@@ -224,3 +228,16 @@ def run_mock_diagnosis(db: Session, query: str) -> dict[str, Any]:
         "tool_calls": [serialize_tool_call(item) for item in tool_calls],
         "approval": serialize_approval(approval),
     }
+
+
+def run_diagnosis(db: Session, query: str) -> dict[str, Any]:
+    """优先运行 LangGraph；图或依赖异常时完整回退到原 Mock workflow。"""
+    try:
+        # 延迟导入避免 LangGraph 缺失时影响原 Mock 演示流程。
+        from app.agent.langgraph_workflow import run_langgraph_diagnosis
+
+        return run_langgraph_diagnosis(db, query)
+    except Exception:
+        logger.exception("LangGraph diagnosis failed; falling back to mock workflow")
+        db.rollback()
+        return run_mock_diagnosis(db, query)

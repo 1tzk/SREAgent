@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from app.agent.workflow import run_mock_diagnosis, serialize_tool_call
+from app.agent.workflow import run_diagnosis, serialize_tool_call
 from app.database import get_db
 from app.models import AgentSession, AgentToolCall
 from app.schemas import (
@@ -28,7 +28,7 @@ def diagnose(
             detail="query 不能为空",
         )
     return DiagnoseResponse.model_validate(
-        run_mock_diagnosis(db, request.query.strip())
+        run_diagnosis(db, request.query.strip())
     )
 
 

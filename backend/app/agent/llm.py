@@ -183,6 +183,5 @@ def call_llm_for_diagnosis(context: dict[str, Any]) -> dict[str, str]:
             provider,
             type(exc).__name__,
         )
-        return fallback_mock_response(context)
         # 第三方 SDK/网络实现的未预期错误也不能中断稳定诊断链路。
         return fallback_mock_response(context)
