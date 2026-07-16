@@ -16,6 +16,12 @@ conda activate sre
 pip install -r requirements.txt
 ```
 
+## 数据库迁移
+
+升级已有 SQLite 数据库后再启动服务：
+
+    alembic upgrade head
+
 ## 启动
 
 在 `backend` 目录下运行：
@@ -81,9 +87,11 @@ curl -X POST http://localhost:8000/api/scenarios/order-timeout
 
 接口文档启动后可访问 `http://localhost:8000/docs`。
 
-## Mock Agent 诊断
+## 自主 Agent Run
 
-当前版本固定使用确定性 Mock 工作流，不需要任何大模型 API Key。
+当前版本使用自研的持久化 Agent Loop；无 API Key 时自动使用 Mock Planner。
+诊断请求会异步入队，模型只能选择注册表中的工具。模拟回滚、重启和扩缩容
+由策略层限制在本地模拟环境，处置后会再次读取观测数据完成复查。
 
 ```bash
 curl -X POST http://localhost:8000/api/agent/diagnose \
@@ -91,13 +99,10 @@ curl -X POST http://localhost:8000/api/agent/diagnose \
   -d '{"query":"订单接口最近响应很慢，请帮我排查原因并给出处理建议。"}'
 ```
 
-诊断会依次查询告警、指标、日志、链路、发布记录和 Runbook。每次工具调用都会记录输入、输出、耗时和执行状态。涉及回滚、重启、扩容或配置变更时只创建待审批单，不会执行实际操作。
+Planner 会根据每轮观察结果选择下一项白名单工具。每次决策和工具调用都会记录输入、输出、耗时及执行状态；模拟处置只会作用于本地演示数据库。
 
-相关接口：
+主要接口：
 
-- `GET /api/agent/sessions`
-- `GET /api/agent/sessions/{session_id}`
-- `GET /api/agent/sessions/{session_id}/tool-calls`
-- `GET /api/approvals`
-- `POST /api/approvals/{approval_id}/approve`
-- `POST /api/approvals/{approval_id}/reject`
+- `POST /api/agent/runs`：创建异步 Run，返回 202。
+- `GET /api/agent/runs`：查询 Run 列表。
+- `GET /api/agent/runs/{run_id}`：查看步骤、审计、模拟处置和最终结论。

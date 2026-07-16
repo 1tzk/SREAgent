@@ -107,6 +107,7 @@ export interface IncidentReport {
 export interface AgentToolCall {
   id: number;
   session_id: number;
+  step_id: number | null;
   tool_name: string;
   tool_input: Record<string, unknown>;
   tool_output: unknown;
@@ -129,17 +130,48 @@ export interface Approval {
 export interface AgentSession {
   id: number;
   user_query: string;
+  status: "queued" | "running" | "completed" | "failed" | "stopped";
+  max_steps: number;
+  steps_taken: number;
+  failure_reason: string | null;
   final_answer: string | null;
   diagnosis_summary: string | null;
   root_cause: string | null;
   recommendation: string | null;
   risk_level: string | null;
   created_at: string;
+  started_at: string | null;
+  completed_at: string | null;
+}
+
+export interface AgentStep {
+  id: number;
+  sequence: number;
+  decision_type: "tool" | "final";
+  tool_name: string | null;
+  rationale: string;
+  status: "planned" | "succeeded" | "failed" | "rejected";
+  decision_payload: Record<string, unknown>;
+  observation: unknown;
+  created_at: string;
+}
+
+export interface RemediationExecution {
+  id: number;
+  step_id: number | null;
+  action_type: string;
+  service_name: string;
+  status: string;
+  details: unknown;
+  verified: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface AgentSessionDetail extends AgentSession {
+  steps: AgentStep[];
   tool_calls: AgentToolCall[];
-  approvals: Approval[];
+  remediation_executions: RemediationExecution[];
 }
 
 export interface DiagnoseResponse {

@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     qwen_api_key: str = ""
     model_name: str = ""
     llm_timeout_seconds: int = 60
+    agent_max_steps: int = 12
+    agent_execution_mode: str = "simulation"
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
 
     model_config = SettingsConfigDict(

@@ -11,7 +11,7 @@ import {
 } from "@ant-design/icons";
 import { Button, Layout, Menu, Typography } from "antd";
 
-import { AgentDiagnosisPage } from "./pages/AgentDiagnosisPage";
+import { AgentRunPage } from "./pages/AgentRunPage";
 import { AgentTracesPage } from "./pages/AgentTracesPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { IncidentReportsPage } from "./pages/IncidentReportsPage";
@@ -40,7 +40,7 @@ function PageContent({ path }: { path: string }) {
     case "/scenarios":
       return <ScenarioLabPage />;
     case "/agent":
-      return <AgentDiagnosisPage />;
+      return <AgentRunPage />;
     case "/agent-traces":
       return <AgentTracesPage />;
     case "/traces":

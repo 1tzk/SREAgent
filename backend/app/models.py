@@ -42,6 +42,21 @@ class ApprovalStatus(StrEnum):
     REJECTED = "rejected"
 
 
+class AgentRunStatus(StrEnum):
+    QUEUED = "queued"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    STOPPED = "stopped"
+
+
+class AgentStepStatus(StrEnum):
+    PLANNED = "planned"
+    SUCCEEDED = "succeeded"
+    FAILED = "failed"
+    REJECTED = "rejected"
+
+
 def enum_column(enum_cls: type[StrEnum], length: int = 32):
     # 使用字符串保存枚举值，便于后续从 SQLite 迁移到 PostgreSQL。
     return Enum(
@@ -209,9 +224,55 @@ class AgentSession(Base, TimestampMixin):
     root_cause: Mapped[str | None] = mapped_column(Text, nullable=True)
     recommendation: Mapped[str | None] = mapped_column(Text, nullable=True)
     risk_level: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    status: Mapped[AgentRunStatus] = mapped_column(
+        enum_column(AgentRunStatus),
+        default=AgentRunStatus.QUEUED,
+        nullable=False,
+        index=True,
+    )
+    max_steps: Mapped[int] = mapped_column(Integer, default=12, nullable=False)
+    steps_taken: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    failure_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     tool_calls: Mapped[list["AgentToolCall"]] = relationship(back_populates="session")
     approvals: Mapped[list["Approval"]] = relationship(back_populates="session")
+    steps: Mapped[list["AgentStep"]] = relationship(
+        back_populates="session",
+        cascade="all, delete-orphan",
+    )
+    remediation_executions: Mapped[list["RemediationExecution"]] = relationship(
+        back_populates="session",
+        cascade="all, delete-orphan",
+    )
+
+
+class AgentStep(Base, TimestampMixin):
+    __tablename__ = "agent_steps"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    session_id: Mapped[int] = mapped_column(
+        ForeignKey("agent_sessions.id"),
+        index=True,
+        nullable=False,
+    )
+    sequence: Mapped[int] = mapped_column(Integer, nullable=False)
+    decision_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    tool_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    rationale: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[AgentStepStatus] = mapped_column(
+        enum_column(AgentStepStatus),
+        nullable=False,
+    )
+    decision_payload: Mapped[str] = mapped_column(Text, nullable=False)
+    observation: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    session: Mapped[AgentSession] = relationship(back_populates="steps")
+    tool_calls: Mapped[list["AgentToolCall"]] = relationship(back_populates="step")
+    remediation_executions: Mapped[list["RemediationExecution"]] = relationship(
+        back_populates="step"
+    )
 
 
 class AgentToolCall(Base, TimestampMixin):
@@ -219,6 +280,11 @@ class AgentToolCall(Base, TimestampMixin):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     session_id: Mapped[int] = mapped_column(ForeignKey("agent_sessions.id"), index=True, nullable=False)
+    step_id: Mapped[int | None] = mapped_column(
+        ForeignKey("agent_steps.id"),
+        index=True,
+        nullable=True,
+    )
     tool_name: Mapped[str] = mapped_column(String(100), nullable=False)
     tool_input: Mapped[str] = mapped_column(Text, nullable=False)
     tool_output: Mapped[str] = mapped_column(Text, nullable=False)
@@ -226,6 +292,37 @@ class AgentToolCall(Base, TimestampMixin):
     success: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     session: Mapped[AgentSession] = relationship(back_populates="tool_calls")
+    step: Mapped[AgentStep | None] = relationship(back_populates="tool_calls")
+
+
+class RemediationExecution(Base, TimestampMixin):
+    __tablename__ = "remediation_executions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    session_id: Mapped[int] = mapped_column(
+        ForeignKey("agent_sessions.id"),
+        index=True,
+        nullable=False,
+    )
+    step_id: Mapped[int | None] = mapped_column(
+        ForeignKey("agent_steps.id"),
+        index=True,
+        nullable=True,
+    )
+    action_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    service_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    details: Mapped[str] = mapped_column(Text, nullable=False)
+    verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False,
+    )
+
+    session: Mapped[AgentSession] = relationship(back_populates="remediation_executions")
+    step: Mapped[AgentStep | None] = relationship(back_populates="remediation_executions")
 
 
 class Approval(Base):

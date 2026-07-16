@@ -1,4 +1,5 @@
 import logging
+from contextlib import asynccontextmanager
 from typing import Any
 
 from fastapi import FastAPI, Request
@@ -7,7 +8,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.api.agent import router as agent_router
+from app.agent.runner import AgentRunWorker
+from app.api.agent_runs import router as agent_router
 from app.api.alerts import router as alerts_router
 from app.api.approvals import router as approvals_router
 from app.api.dashboard import router as dashboard_router
@@ -51,8 +53,18 @@ def _validation_details(errors: list[dict[str, Any]]) -> list[dict[str, Any]]:
     ]
 
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    worker = AgentRunWorker()
+    await worker.start()
+    try:
+        yield
+    finally:
+        await worker.stop()
+
+
 def create_app() -> FastAPI:
-    app = FastAPI(title=settings.app_name)
+    app = FastAPI(title=settings.app_name, lifespan=lifespan)
 
     @app.exception_handler(StarletteHTTPException)
     async def http_exception_handler(

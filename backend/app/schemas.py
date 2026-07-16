@@ -170,6 +170,7 @@ class DiagnoseRequest(BaseModel):
 class AgentToolCallRead(BaseModel):
     id: int
     session_id: int
+    step_id: int | None
     tool_name: str
     tool_input: dict[str, Any]
     tool_output: Any
@@ -194,19 +195,50 @@ class ApprovalRead(BaseModel):
 class AgentSessionRead(BaseModel):
     id: int
     user_query: str
+    status: str
+    max_steps: int
+    steps_taken: int
+    failure_reason: str | None
     final_answer: str | None
     diagnosis_summary: str | None
     root_cause: str | None
     recommendation: str | None
     risk_level: str | None
     created_at: datetime
+    started_at: datetime | None
+    completed_at: datetime | None
 
     model_config = ConfigDict(from_attributes=True)
 
 
+class AgentStepRead(BaseModel):
+    id: int
+    sequence: int
+    decision_type: str
+    tool_name: str | None
+    rationale: str
+    status: str
+    decision_payload: dict[str, Any]
+    observation: Any
+    created_at: datetime
+
+
+class RemediationExecutionRead(BaseModel):
+    id: int
+    step_id: int | None
+    action_type: str
+    service_name: str
+    status: str
+    details: Any
+    verified: bool
+    created_at: datetime
+    updated_at: datetime
+
+
 class AgentSessionDetail(AgentSessionRead):
+    steps: list[AgentStepRead]
     tool_calls: list[AgentToolCallRead]
-    approvals: list[ApprovalRead]
+    remediation_executions: list[RemediationExecutionRead]
 
 
 class DiagnoseResponse(BaseModel):

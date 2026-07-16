@@ -33,6 +33,11 @@ export const apiClient = {
   getAlerts: () => api.get<Alert[]>("/alerts"),
   getMetrics: (metricName?: string) =>
     api.get<Metric[]>("/metrics", { params: { metric_name: metricName } }),
+  startAgentRun: (query: string) =>
+    api.post<AgentSession>("/agent/runs", { query }),
+  getAgentRun: (sessionId: number) =>
+    api.get<AgentSessionDetail>("/agent/runs/" + sessionId),
+  getAgentRuns: () => api.get<AgentSession[]>("/agent/runs"),
   runScenario: (scenario: string) =>
     api.post<ScenarioResponse>(`/scenarios/${scenario}`),
   diagnose: (query: string) =>

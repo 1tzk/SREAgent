@@ -13,6 +13,7 @@ from typing import Any, TypeVar, cast
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from pydantic import BaseModel, Field
 
 from app.models import (
     AgentToolCall,
@@ -21,9 +22,12 @@ from app.models import (
     Approval,
     ApprovalStatus,
     Deployment,
+    DeploymentStatus,
     Log,
     Metric,
     Runbook,
+    Service,
+    ServiceStatus,
     Trace,
 )
 
@@ -32,6 +36,7 @@ from app.models import (
 class AgentToolContext:
     db: Session
     session_id: int
+    step_id: int | None = None
 
 
 _tool_context: ContextVar[AgentToolContext | None] = ContextVar(
@@ -42,9 +47,15 @@ ToolFunction = TypeVar("ToolFunction", bound=Callable[..., Any])
 
 
 @contextmanager
-def bind_tool_context(db: Session, session_id: int) -> Iterator[None]:
+def bind_tool_context(
+    db: Session,
+    session_id: int,
+    step_id: int | None = None,
+) -> Iterator[None]:
     """为当前诊断请求绑定数据库会话和审计所需的 session_id。"""
-    token = _tool_context.set(AgentToolContext(db=db, session_id=session_id))
+    token = _tool_context.set(
+        AgentToolContext(db=db, session_id=session_id, step_id=step_id)
+    )
     try:
         yield
     finally:
@@ -89,6 +100,7 @@ def _record_tool_call(
     context.db.add(
         AgentToolCall(
             session_id=context.session_id,
+            step_id=context.step_id,
             tool_name=tool_name,
             tool_input=json.dumps(tool_input, ensure_ascii=False, default=_json_default),
             tool_output=json.dumps(tool_output, ensure_ascii=False, default=_json_default),
@@ -407,3 +419,166 @@ def submit_approval(
     context.db.add(approval)
     context.db.flush()
     return _to_dict(approval)
+
+
+@audited_tool
+def simulate_restart_service(service_name: str) -> dict[str, Any]:
+    """只改变演示数据库中的服务状态，不会触碰真实运行环境。"""
+    context = _current_context()
+    service = context.db.scalar(select(Service).where(Service.name == service_name))
+    if service is None:
+        raise ValueError(f"未知服务：{service_name}")
+    service.status = ServiceStatus.HEALTHY
+    return {"service_name": service_name, "action": "restart", "status": "simulated"}
+
+
+@audited_tool
+def simulate_rollback_deployment(service_name: str) -> dict[str, Any]:
+    """在模拟数据中写入回滚记录，用来验证处置后的观测闭环。"""
+    context = _current_context()
+    service = context.db.scalar(select(Service).where(Service.name == service_name))
+    if service is None:
+        raise ValueError(f"未知服务：{service_name}")
+    service.status = ServiceStatus.HEALTHY
+    context.db.add(
+        Deployment(
+            service_name=service_name,
+            version="simulated-rollback",
+            operator="agent-simulator",
+            description="受控 Agent Loop 执行的模拟回滚",
+            status=DeploymentStatus.ROLLBACK,
+            deployed_at=datetime.utcnow(),
+        )
+    )
+    return {
+        "service_name": service_name,
+        "action": "rollback_deployment",
+        "status": "simulated",
+    }
+
+
+@audited_tool
+def simulate_scale_service(service_name: str, replicas: int) -> dict[str, Any]:
+    """扩缩容仅记录在本地演示环境中，副本数受到工具输入模型限制。"""
+    context = _current_context()
+    service = context.db.scalar(select(Service).where(Service.name == service_name))
+    if service is None:
+        raise ValueError(f"未知服务：{service_name}")
+    service.status = ServiceStatus.HEALTHY
+    return {
+        "service_name": service_name,
+        "action": "scale_service",
+        "replicas": replicas,
+        "status": "simulated",
+    }
+
+
+class EmptyInput(BaseModel):
+    pass
+
+
+class ServiceInput(BaseModel):
+    service_name: str = Field(min_length=1, max_length=100)
+
+
+class MetricsInput(ServiceInput):
+    metric_name: str | None = Field(default=None, max_length=100)
+
+
+class LogsInput(ServiceInput):
+    keyword: str | None = Field(default=None, max_length=200)
+    limit: int = Field(default=20, ge=1, le=100)
+
+
+class TraceInput(BaseModel):
+    trace_id: str | None = Field(default=None, max_length=100)
+
+
+class RunbookInput(BaseModel):
+    query: str = Field(min_length=1, max_length=300)
+
+
+class ScaleInput(ServiceInput):
+    replicas: int = Field(ge=1, le=10)
+
+
+@dataclass(frozen=True)
+class ToolSpec:
+    name: str
+    input_model: type[BaseModel]
+    function: Callable[..., Any]
+    description: str
+    side_effect: bool = False
+    risk_level: str = "low"
+    max_result_items: int = 100
+
+
+TOOL_REGISTRY: dict[str, ToolSpec] = {
+    "get_current_alerts": ToolSpec(
+        "get_current_alerts", EmptyInput, get_current_alerts, "读取当前活跃告警"
+    ),
+    "query_metrics": ToolSpec(
+        "query_metrics", MetricsInput, query_metrics, "查询一个服务的监控指标"
+    ),
+    "query_logs": ToolSpec(
+        "query_logs", LogsInput, query_logs, "查询一个服务的日志"
+    ),
+    "query_trace": ToolSpec(
+        "query_trace", TraceInput, query_trace, "按 trace_id 查询调用链"
+    ),
+    "get_recent_deployments": ToolSpec(
+        "get_recent_deployments",
+        ServiceInput,
+        get_recent_deployments,
+        "查询服务近期发布记录",
+    ),
+    "search_runbook": ToolSpec(
+        "search_runbook", RunbookInput, search_runbook, "检索 Runbook"
+    ),
+    "simulate_restart_service": ToolSpec(
+        "simulate_restart_service",
+        ServiceInput,
+        simulate_restart_service,
+        "在模拟环境重启服务",
+        side_effect=True,
+        risk_level="medium",
+    ),
+    "simulate_rollback_deployment": ToolSpec(
+        "simulate_rollback_deployment",
+        ServiceInput,
+        simulate_rollback_deployment,
+        "在模拟环境回滚最近发布",
+        side_effect=True,
+        risk_level="high",
+    ),
+    "simulate_scale_service": ToolSpec(
+        "simulate_scale_service",
+        ScaleInput,
+        simulate_scale_service,
+        "在模拟环境调整服务副本数",
+        side_effect=True,
+        risk_level="medium",
+    ),
+}
+
+
+def tool_descriptions() -> list[dict[str, Any]]:
+    """向 Planner 暴露声明式工具契约，而不是 Python 函数或执行权限。"""
+    return [
+        {
+            "name": spec.name,
+            "description": spec.description,
+            "input_schema": spec.input_model.model_json_schema(),
+            "side_effect": spec.side_effect,
+            "risk_level": spec.risk_level,
+        }
+        for spec in TOOL_REGISTRY.values()
+    ]
+
+
+def execute_registered_tool(name: str, arguments: dict[str, Any]) -> tuple[ToolSpec, Any]:
+    spec = TOOL_REGISTRY.get(name)
+    if spec is None:
+        raise ValueError(f"工具未注册：{name}")
+    validated_input = spec.input_model.model_validate(arguments)
+    return spec, spec.function(**validated_input.model_dump())

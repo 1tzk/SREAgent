@@ -2,13 +2,15 @@
 
 AI SRE Agent 是一个面向微服务故障诊断与事故分析的平台。本项目采用前后端分离结构：后端使用 FastAPI，前端使用 React + TypeScript + Vite。
 
-当前阶段只完成项目骨架和基础启动能力：
+当前阶段实现了面向模拟环境的受控自主 SRE Agent POC：
 
 - FastAPI 后端骨架
 - `GET /api/health` 健康检查接口
 - SQLite 数据库连接配置
 - React + TypeScript + Vite 前端骨架
-- LLM 默认 mock 模式配置占位
+- 持久化 Agent Loop 与异步 Agent Run
+- 白名单工具调用审计、模拟处置与处置后复查
+- 无 API Key 自动回退到 Mock Planner
 
 本阶段不实现数据库表、Agent 工作流、RAG 逻辑或复杂 UI。
 

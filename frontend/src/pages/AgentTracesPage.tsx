@@ -15,10 +15,10 @@ export function AgentTracesPage() {
   const [error, setError] = useState<string>();
 
   useEffect(() => {
-    apiClient.getAgentSessions()
+    apiClient.getAgentRuns()
       .then(async ({ data }) => {
         setSessions(data);
-        if (data[0]) setSelected((await apiClient.getAgentSession(data[0].id)).data);
+        if (data[0]) setSelected((await apiClient.getAgentRun(data[0].id)).data);
       })
       .catch((requestError) => setError(getApiErrorMessage(requestError)))
       .finally(() => setLoading(false));
@@ -26,7 +26,7 @@ export function AgentTracesPage() {
 
   async function selectSession(sessionId: number) {
     try {
-      setSelected((await apiClient.getAgentSession(sessionId)).data);
+      setSelected((await apiClient.getAgentRun(sessionId)).data);
     } catch (requestError) {
       setError(getApiErrorMessage(requestError));
     }
